@@ -1,0 +1,99 @@
+name: Build and Publish
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        dotnet-version: ['9.0.x']
+    
+    env:
+      FTP_SERVER: ${{ secrets.WELL_FTP_SERVER }}
+      FTP_USERNAME: ${{ secrets.WELL_FTP_USERNAME }}
+      FTP_PASSWORD: ${{ secrets.WELL_FTP_PASSWORD }}
+      FTP_LOCAL_DIR: src/Base.WebApp/bin/Release/net9.0/publish/
+      FTP_OFFLINE_DIR: TmpFolder/
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Publish project
+        run: dotnet publish --configuration Release
+
+      - name: Wait for publish completion
+        run: Start-Sleep -Seconds 5
+        continue-on-error: true
+
+      - name: Create temporary folder
+        run: mkdir -p TmpFolder
+
+      - name: Create app-offline.htm
+        run: echo "Updating, please wait" > TmpFolder/app_offline.htm
+
+      - name: Upload app-offline.htm to FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          timeout: 1000000
+          server: ${{ env.FTP_SERVER }}
+          username: ${{ env.FTP_USERNAME }}
+          password: ${{ env.FTP_PASSWORD }}
+          local-dir: ${{ env.FTP_OFFLINE_DIR }}
+          server-dir: /
+          protocol: ftp
+          security: loose
+          port: 21
+          verbose: true
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/web.config
+            **/appsettings.json
+            **/UploadedDocuments/**
+            **/wwwroot/**
+            **/runtimes/**
+            **/.well-known/**
+            !app_offline.htm
+
+      - name: Deploy project files to FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          timeout: 1000000
+          server: ${{ env.FTP_SERVER }}
+          username: ${{ env.FTP_USERNAME }}
+          password: ${{ env.FTP_PASSWORD }}
+          local-dir: ${{ env.FTP_LOCAL_DIR }}
+          server-dir: /
+          protocol: ftp
+          security: loose
+          port: 21
+          verbose: true
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/web.config
+            **/appsettings.json
+            **/UploadedDocuments/**
+            **/wwwroot/**
+            **/runtimes/**
+            **/.well-known/**
+            ${{ env.FTP_OFFLINE_DIR }}/**
+
+      - name: Verify deployment
+        run: dir ${{ env.FTP_LOCAL_DIR }}
+        continue-on-error: true
