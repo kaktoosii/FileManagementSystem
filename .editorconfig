@@ -34,7 +34,8 @@ dotnet_diagnostic.IDE0072.severity = suggestion
 dotnet_diagnostic.MA0015.severity = none  
 [*.cs]  
 dotnet_diagnostic.S1144.severity = none  
-
+[*.cs]
+dotnet_diagnostic.MA0048.severity = none
 # SCS0008: The cookie is missing 'Secure' flag. 
 dotnet_diagnostic.SCS0008.severity = suggestion
 

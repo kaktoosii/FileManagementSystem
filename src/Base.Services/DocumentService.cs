@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 using ViewModels.Dto;
 using System.Globalization;
 using Base.Common.Helpers;
+using System.Text.Json;
 
 
 namespace Services.Services;
@@ -174,11 +175,11 @@ public class DocumentService : IDocumentService
 
         var rootPath = this._hostingEnvironment.ContentRootPath;
         var path = Path.Combine(rootPath + document.Path);
-        if (!File.Exists(path))
+        if (!System.IO.File.Exists(path))
         {
             return BrokenImage();
         }
-        return File.OpenRead(path);
+        return System.IO.File.OpenRead(path);
     }
 
 
@@ -193,7 +194,7 @@ public class DocumentService : IDocumentService
         {
             _document.Remove(document);
             await _uow.SaveChangesAsync();
-            File.Delete(relativePath);
+            System.IO.File.Delete(relativePath);
             return true;
         }
         catch
@@ -212,7 +213,7 @@ public class DocumentService : IDocumentService
         var relativePath = Path.Combine(rootPath + document.Path);
         try
         {
-            File.Delete(relativePath);
+            System.IO.File.Delete(relativePath);
             return true;
         }
         catch
@@ -224,7 +225,7 @@ public class DocumentService : IDocumentService
     public FileStream BrokenImage()
     {
         var documentPath = this._hostingEnvironment.ContentRootPath + @"\wwwroot\images\brokenImage.png";
-        var file = File.OpenRead(documentPath);
+        var file = System.IO.File.OpenRead(documentPath);
         return file;
     }
 

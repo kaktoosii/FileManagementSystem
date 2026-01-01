@@ -16,6 +16,10 @@ public class ApplicationDbContext : DbContext, IUnitOfWork
     public virtual DbSet<UserToken> UserTokens { get; set; } = default!;
 
     public virtual DbSet<Document> Documents { get; set; }
+    public virtual DbSet<Base.DomainClasses.File> Files { get; set; }
+    public virtual DbSet<Folder> Folders { get; set; }
+    public virtual DbSet<FilePattern> FilePatterns { get; set; }
+    public virtual DbSet<PatternField> PatternFields { get; set; }
     public virtual DbSet<United> Uniteds { get; set; }
     public virtual DbSet<City> Cities { get; set; }
     public virtual DbSet<Setting> Settings { get; set; }
@@ -23,12 +27,8 @@ public class ApplicationDbContext : DbContext, IUnitOfWork
     public virtual DbSet<SupportResponse> SupportResponses { get; set; }
     public virtual DbSet<Message> Messages { get; set; }
     public virtual DbSet<MessageSeen> MessageSeens { get; set; }
-    public virtual DbSet<Well> Wells { get; set; }
     public virtual DbSet<Report> Reports { get; set; }
-    public virtual DbSet<License> Licenses { get; set; }
     public virtual DbSet<UserClaim> UserClaims { set; get; } = default!;
-    public DbSet<ApprovalLevel> ApprovalLevels { get; set; }
-    public DbSet<WellReportStatus> WellReportStatus { get; set; }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -89,6 +89,53 @@ public class ApplicationDbContext : DbContext, IUnitOfWork
 
             entity.Property(ut => ut.RefreshTokenIdHash).HasMaxLength(maxLength: 450).IsRequired();
             entity.Property(ut => ut.RefreshTokenIdHashSource).HasMaxLength(maxLength: 450);
+        });
+
+        modelBuilder.Entity<Folder>(entity =>
+        {
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.ParentFolderId);
+            entity.HasOne(f => f.ParentFolder)
+                .WithMany(p => p.SubFolders)
+                .HasForeignKey(f => f.ParentFolderId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<FilePattern>(entity =>
+        {
+            entity.HasIndex(e => e.UserId);
+            entity.Property(e => e.Name).HasMaxLength(450).IsRequired();
+            entity.Property(e => e.Pattern).HasMaxLength(1000).IsRequired();
+        });
+
+        modelBuilder.Entity<PatternField>(entity =>
+        {
+            entity.HasIndex(e => e.FilePatternId);
+            entity.Property(e => e.FieldName).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.Placeholder).HasMaxLength(200).IsRequired();
+            entity.HasOne(pf => pf.FilePattern)
+                .WithMany(fp => fp.Fields)
+                .HasForeignKey(pf => pf.FilePatternId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Base.DomainClasses.File>(entity =>
+        {
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.FolderId);
+            entity.HasIndex(e => e.FilePatternId);
+            entity.Property(e => e.FileName).HasMaxLength(500).IsRequired();
+            entity.Property(e => e.OriginalFileName).HasMaxLength(500);
+            entity.Property(e => e.Path).HasMaxLength(2000).IsRequired();
+            entity.Property(e => e.MimeType).HasMaxLength(200).IsRequired();
+            entity.HasOne(f => f.Folder)
+                .WithMany(folder => folder.Files)
+                .HasForeignKey(f => f.FolderId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(f => f.FilePattern)
+                .WithMany(fp => fp.Files)
+                .HasForeignKey(f => f.FilePatternId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

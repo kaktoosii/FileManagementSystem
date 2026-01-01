@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Services.Contracts;
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
 using ViewModels.Dto;
@@ -39,6 +40,7 @@ public class DocumentController : Controller
         var userId = User.Identity.GetUserId();
         return this.Ok(await this._documentServices.UploadDocument(documentForUpload, userId, uploaderIp));
     }
+
     [AllowAnonymous]
     [HttpGet]
     public async Task<ActionResult> Download([FromQuery] string DocumentId)

@@ -164,6 +164,9 @@ public static class ConfigureServicesExtensions
         services.AddScoped<ITokenFactoryService, TokenFactoryService>();
         services.AddScoped<IUserClaimsService, UserClaimsService>();
 
+        services.AddScoped<IFolderService, FolderService>();
+        services.AddScoped<IFilePatternService, FilePatternService>();
+        services.AddScoped<IFileService, FileService>();
         services.AddScoped<IDocumentService, DocumentService>();
         services.AddScoped<ILocationService, LocationService>();
         services.AddScoped<ISmsSender, MessageSender>();
