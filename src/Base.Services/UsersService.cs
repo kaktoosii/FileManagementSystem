@@ -357,9 +357,9 @@ public class UsersService : IUsersService
         model.MobileNumber = user.MobileNumber;
         model.DisplayName = user.DisplayName;
         model.ProfileImage = user.ProfileImage;
-        model.IsCheckDistance = user.IsCheckDistance.Value;
-        model.Distance = user.Distance.Value;
-        model.DeviceId = user.DeviceId;
+        model.IsCheckDistance = false;
+        model.Distance = 0;
+        model.DeviceId = "";
         await _uow.SaveChangesAsync();
     }
     public async Task UpdateUserAsync(EditUserDto user)

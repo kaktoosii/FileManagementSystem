@@ -13,8 +13,5 @@ public class UserUpdateDto
     public string? MobileNumber { get; set; }
     public string? LastName { get; set; }
     public string? ProfileImage { get; set; }
-    public bool? IsCheckDistance { get; set; } = false;
-    public int? Distance { get; set; } = 0;
-    public string? DeviceId { get; set; }
 
 }
