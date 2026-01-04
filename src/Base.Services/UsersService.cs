@@ -357,8 +357,8 @@ public class UsersService : IUsersService
         model.MobileNumber = user.MobileNumber;
         model.DisplayName = user.DisplayName;
         model.ProfileImage = user.ProfileImage;
-        model.IsCheckDistance = user.IsCheckDistance;
-        model.Distance = user.Distance;
+        model.IsCheckDistance = user.IsCheckDistance.Value;
+        model.Distance = user.Distance.Value;
         model.DeviceId = user.DeviceId;
         await _uow.SaveChangesAsync();
     }
