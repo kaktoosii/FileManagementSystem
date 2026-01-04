@@ -15,7 +15,7 @@ jobs:
     env:
       FTP_SERVER: ${{ secrets.FTP_SERVER }}
       FTP_USERNAME: ${{ secrets.FTP_USER }}
-      FTP_PASSWORD: ${{ secrets.WELL_FTP_PASS }}
+      FTP_PASSWORD: ${{ secrets.FTP_PASS }}
       FTP_LOCAL_DIR: src/Base.WebApp/bin/Release/net9.0/publish/
       FTP_OFFLINE_DIR: TmpFolder/
 
