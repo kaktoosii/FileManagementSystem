@@ -74,8 +74,8 @@ jobs:
         with:
           timeout: 1000000
           server: ${{ env.FTP_SERVER }}
-          username: ${{ env.FTP_USERNAME }}
-          password: ${{ env.FTP_PASSWORD }}
+          username: ${{ env.FTP_USER }}
+          password: ${{ env.FTP_PASS }}
           local-dir: ${{ env.FTP_LOCAL_DIR }}
           server-dir: /
           protocol: ftp
