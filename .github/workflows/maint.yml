@@ -13,9 +13,9 @@ jobs:
         dotnet-version: ['9.0.x']
     
     env:
-      FTP_SERVER: ${{ secrets.WELL_FTP_SERVER }}
-      FTP_USERNAME: ${{ secrets.WELL_FTP_USERNAME }}
-      FTP_PASSWORD: ${{ secrets.WELL_FTP_PASSWORD }}
+      FTP_SERVER: ${{ secrets.FTP_SERVER }}
+      FTP_USERNAME: ${{ secrets.FTP_USER }}
+      FTP_PASSWORD: ${{ secrets.FTP_PASS }}
       FTP_LOCAL_DIR: src/Base.WebApp/bin/Release/net9.0/publish/
       FTP_OFFLINE_DIR: TmpFolder/
 
@@ -74,8 +74,8 @@ jobs:
         with:
           timeout: 1000000
           server: ${{ env.FTP_SERVER }}
-          username: ${{ env.FTP_USER }}
-          password: ${{ env.FTP_PASS }}
+          username: ${{ env.FTP_USERNAME }}
+          password: ${{ env.FTP_PASSWORD }}
           local-dir: ${{ env.FTP_LOCAL_DIR }}
           server-dir: /
           protocol: ftp
