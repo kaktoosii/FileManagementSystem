@@ -217,10 +217,12 @@ public class FileService : IFileService
             throw new FileNotFoundException("فایل یافت نشد");
 
         var rootPath = _hostingEnvironment.ContentRootPath;
-        var fullPath = Path.Combine(rootPath, file.Path.TrimStart('\\'));
+        // Path is stored with forward slashes, convert to backslashes for Windows
+        var normalizedPath = file.Path.Replace('/', '\\').TrimStart('\\', '/');
+        var fullPath = Path.Combine(rootPath, normalizedPath);
 
         if (!System.IO.File.Exists(fullPath))
-            throw new FileNotFoundException("فایل فیزیکی یافت نشد");
+            throw new FileNotFoundException($"فایل فیزیکی یافت نشد: {fullPath}");
 
         return System.IO.File.OpenRead(fullPath);
     }

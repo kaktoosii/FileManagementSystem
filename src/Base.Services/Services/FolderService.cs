@@ -2,21 +2,26 @@
 using Base.DataLayer.Context;
 using Base.DomainClasses;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Hosting;
 using Services.Contracts;
 using ViewModels.Dto;
 using System.Linq;
+using System.IO;
+using System;
 
 namespace Services.Services;
 
 public class FolderService : IFolderService
 {
     private readonly IUnitOfWork _uow;
+    private readonly IWebHostEnvironment _hostingEnvironment;
     private readonly DbSet<Folder> _folders;
     private readonly DbSet<Base.DomainClasses.File> _files;
 
-    public FolderService(IUnitOfWork uow)
+    public FolderService(IUnitOfWork uow, IWebHostEnvironment hostingEnvironment)
     {
         _uow = uow ?? throw new ArgumentNullException(nameof(uow));
+        _hostingEnvironment = hostingEnvironment ?? throw new ArgumentNullException(nameof(hostingEnvironment));
         _folders = _uow.Set<Folder>();
         _files = _uow.Set<Base.DomainClasses.File>();
     }
@@ -34,16 +39,16 @@ public class FolderService : IFolderService
         {
             var parentFolder = await _folders
                 .FirstOrDefaultAsync(f => f.Id == folderDto.ParentFolderId.Value && f.UserId == userId && !f.IsDeleted);
-            
+
             if (parentFolder == null)
                 throw new AppException("فولدر والد یافت نشد");
         }
 
         // Check for duplicate name in same parent
-        var exists = await _folders.AnyAsync(f => 
-            f.Name == folderDto.Name && 
-            f.ParentFolderId == folderDto.ParentFolderId && 
-            f.UserId == userId && 
+        var exists = await _folders.AnyAsync(f =>
+            f.Name == folderDto.Name &&
+            f.ParentFolderId == folderDto.ParentFolderId &&
+            f.UserId == userId &&
             !f.IsDeleted);
 
         if (exists)
@@ -123,7 +128,7 @@ public class FolderService : IFolderService
         {
             var documentCount = await _files.CountAsync(d => d.FolderId == folder.Id);
             //var subFolderCount = await _folders.CountAsync(f => f.ParentFolderId == folder.Id && !f.IsDeleted);
-            
+
             result.Add(new FolderDto
             {
                 Id = folder.Id,
@@ -183,7 +188,7 @@ public class FolderService : IFolderService
         {
             var parentFolder = await _folders
                 .FirstOrDefaultAsync(f => f.Id == folderDto.ParentFolderId.Value && f.UserId == userId && !f.IsDeleted);
-            
+
             if (parentFolder == null)
                 throw new AppException("فولدر والد یافت نشد");
 
@@ -195,10 +200,10 @@ public class FolderService : IFolderService
         // Check for duplicate name
         if (!string.Equals(folderDto.Name, folder.Name, StringComparison.Ordinal))
         {
-            var exists = await _folders.AnyAsync(f => 
-                f.Name == folderDto.Name && 
-                f.ParentFolderId == folderDto.ParentFolderId && 
-                f.UserId == userId && 
+            var exists = await _folders.AnyAsync(f =>
+                f.Name == folderDto.Name &&
+                f.ParentFolderId == folderDto.ParentFolderId &&
+                f.UserId == userId &&
                 f.Id != folderId &&
                 !f.IsDeleted);
 
@@ -206,12 +211,22 @@ public class FolderService : IFolderService
                 throw new AppException("فولدری با این نام در همین مکان وجود دارد");
         }
 
+        var oldName = folder.Name;
+        var nameChanged = !string.Equals(folderDto.Name, folder.Name, StringComparison.Ordinal);
+
         folder.UpdateName(folderDto.Name);
         folder.UpdateDescription(folderDto.Description);
         if (folderDto.ParentFolderId != folder.ParentFolderId)
             folder.MoveToFolder(folderDto.ParentFolderId);
 
         await _uow.SaveChangesAsync();
+
+        // Rename physical folder and update paths of files and subfolders if folder name changed
+        if (nameChanged)
+        {
+            await RenamePhysicalFolderAsync(folderId, oldName, folderDto.Name);
+            await UpdateFolderPathsRecursivelyAsync(folderId);
+        }
     }
 
     public async Task DeleteFolderAsync(int folderId, int userId)
@@ -249,7 +264,7 @@ public class FolderService : IFolderService
         {
             var parentFolder = await _folders
                 .FirstOrDefaultAsync(f => f.Id == newParentFolderId.Value && f.UserId == userId && !f.IsDeleted);
-            
+
             if (parentFolder == null)
                 throw new AppException("فولدر والد یافت نشد");
 
@@ -303,5 +318,78 @@ public class FolderService : IFolderService
         }
 
         return false;
+    }
+
+    private async Task RenamePhysicalFolderAsync(int folderId, string oldName, string newName)
+    {
+        try
+        {
+            // Get folder path (this includes parent folders)
+            var folderPath = await GetFolderPathAsync(folderId);
+            var rootPath = _hostingEnvironment.ContentRootPath;
+            var uploadBasePath = Path.Combine(rootPath, "UploadedFiles");
+            
+            // Build old folder path (with old name)
+            var oldFolderPath = Path.Combine(uploadBasePath, folderPath.Replace('\\', Path.DirectorySeparatorChar));
+            
+            // Build new folder path (replace only the last occurrence of old name with new name)
+            var pathParts = folderPath.Split('\\');
+            var lastIndex = Array.LastIndexOf(pathParts, oldName);
+            if (lastIndex >= 0)
+            {
+                pathParts[lastIndex] = newName;
+            }
+            var newFolderPath = Path.Combine(uploadBasePath, string.Join(Path.DirectorySeparatorChar.ToString(), pathParts));
+
+            // Only rename if the folder exists and paths are different
+            if (Directory.Exists(oldFolderPath) && !string.Equals(oldFolderPath, newFolderPath, StringComparison.Ordinal) && !Directory.Exists(newFolderPath))
+            {
+                Directory.Move(oldFolderPath, newFolderPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't fail the operation
+            // You may want to log this exception
+            System.Diagnostics.Debug.WriteLine($"Error renaming physical folder: {ex.Message}");
+        }
+    }
+
+    private async Task UpdateFolderPathsRecursivelyAsync(int folderId)
+    {
+        // Get all files in this folder
+        var files = await _files
+            .Where(f => f.FolderId == folderId && !f.IsDeleted)
+            .ToListAsync();
+
+        // Update file paths
+        foreach (var file in files)
+        {
+            var newPath = await BuildFilePathAsync(file.FolderId.Value, file.FileName);
+            file.UpdatePath(newPath);
+        }
+
+        // Get all subfolders
+        var subFolders = await _folders
+            .Where(f => f.ParentFolderId == folderId && !f.IsDeleted)
+            .ToListAsync();
+
+        // Recursively update subfolders
+        foreach (var subFolder in subFolders)
+        {
+            await UpdateFolderPathsRecursivelyAsync(subFolder.Id);
+        }
+
+        await _uow.SaveChangesAsync();
+    }
+
+    private async Task<string> BuildFilePathAsync(int folderId, string fileName)
+    {
+        var folderPath = await GetFolderPathAsync(folderId);
+        var relativePath = @"\UploadedFiles\" + folderPath.Replace("\\", "\\", StringComparison.OrdinalIgnoreCase) + "\\";
+        var fullPath = Path.Combine(relativePath, fileName);
+        // Convert to forward slashes and ensure it starts with /
+        var normalizedPath = fullPath.Replace('\\', '/');
+        return normalizedPath.StartsWith('/') ? normalizedPath : "/" + normalizedPath.TrimStart('/');
     }
 }

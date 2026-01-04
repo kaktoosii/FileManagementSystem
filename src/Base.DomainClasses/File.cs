@@ -72,6 +72,13 @@ public class File
         FileName = fileName;
     }
 
+    public void UpdatePath(string newPath)
+    {
+        if (string.IsNullOrWhiteSpace(newPath))
+            throw new ArgumentException("مسیر فایل نمی‌تواند خالی باشد", nameof(newPath));
+        Path = newPath;
+    }
+
     public void SoftDelete()
     {
         IsDeleted = true;
