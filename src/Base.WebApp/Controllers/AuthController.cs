@@ -112,7 +112,7 @@ public class AuthController : Controller
 
     [AllowAnonymous]
     [IgnoreAntiforgeryToken]
-    [HttpPost(template: "[action]")]
+    [HttpPost("RefreshToken")]
     [ProducesResponseType(typeof(PagedResponse<UserTokensDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> RefreshToken([FromBody] Token model)
     {
